@@ -1,0 +1,93 @@
+# ansible playbook to drive ACI fabric access policy
+# start: 2020.07.03
+# poomsawas@gmail.com
+# modules: https://docs.ansible.com/ansible/latest/modules/list_of_network_modules.html
+# good reference: https://github.com/datacenter/ansible-role-aci-model/blob/master/tasks/main-json.yml
+
+- name: aci2 fabric access policy
+  hosts: irvsdc-apic1
+  connection: local
+  gather_facts: no
+
+  vars:
+    aci_login: &aci_login
+      hostname: "{{ apic_host }}"
+      username: "{{ apic_username }}"
+      password: "{{ apic_password }}"
+      use_proxy: "{{ apic_use_proxy }}"
+      validate_certs: "{{ apic_validate_certs }}"
+  
+  # ** populate necessary common interface policies
+  # [menu] Fabric > Access Policies > Policies > Interface
+  # Link Level (hintfpol) - use aci_rest
+  # CDP Interface - aci_interface_policy_cdp
+  # LLDP Interface - aci_interface_policy_lldp
+  # Port Channel (LACP mode) - aci_interface_policy_port_channel
+  # leaf switch profile (NodeP)
+
+  tasks:
+  # - name: create interface policy - link level
+  #   aci_rest:
+  #     <<: *aci_login
+  #     method: "post"
+  #     path: /api/mo/uni.json
+  #     content: {
+  #       "fabricHIfPol": {
+  #         "attributes": {
+  #           "dn":"uni/infra/hintfpol-{{ item.name }}",
+  #           "name":"{{ item.name }}",
+  #           "autoNeg":"{{ item.autoneg }}",
+  #           "speed":"{{ item.speed }}",
+  #           "rn":"hintfpol-{{ item.name }}",
+  #           "status":"created"
+  #         },
+  #         "children":[]
+  #       }
+  #     }
+  #   with_items: "{{ fabric_access_policy.interface_link_level }}"
+
+  # CDP Interface - aci_interface_policy_cdp
+  - name: create cdp interface policy
+    aci_interface_policy_cdp:
+      <<: *aci_login
+      state: "{{ item.state }}"
+      name: "{{ item.name }}"
+      admin_state: "{{ item.admin_state }}"
+    with_items: "{{ fabric_access_policy.interface_policy_cdp }}"
+
+  # LLDP Interface - aci_interface_policy_lldp
+  - name: create lldp interface policy
+    aci_interface_policy_lldp:
+      <<: *aci_login
+      state: "{{ item.state }}"
+      name: "{{ item.name }}"
+      receive_state: "{{ item.receive_state }}"
+      transmit_state: "{{ item.transmit_state }}"
+    with_items: "{{ fabric_access_policy.interface_policy_lldp }}"
+
+  # Port Channel (LACP mode) - aci_interface_policy_port_channel
+  - name: create lacp interface policy
+    aci_interface_policy_port_channel:
+      <<: *aci_login
+      state: "{{ item.state }}"
+      name: "{{ item.name }}"
+      mode: "{{ item.mode }}"
+      fast_select: "{{ item.fast_select }}"
+      graceful_convergence: "{{ item.graceful_convergence }}"
+      suspend_individual: "{{ item.suspend_individual }}"
+      symmetric_hash: "{{ item.symmetric_hash }}"
+    with_items: "{{ fabric_access_policy.interface_policy_port_channel }}"
+
+
+  # step 2 - populate switch/interface profiles and selector skeleton
+  # [menu] Fabric > Access Policies
+  # but will use Terraform as it's dynamic
+  # NodeP - Leaf Switch Profile : Switches > Leaf Switches > Profiles
+  # LeafS - Leaf Selector : (inside Leaf Switch Profile)
+  # RsAccPortP - Associated Interface Selector Profiles to Leaf Switch Profile
+  # AccPortP - Leaf Interface Profile : Interfaces > Leaf Interfaces > Profiles
+  # HportS - Interface Selector : (inside Leaf Interface Profile)
+  # AccBndGrp - Interface policy Group : Interfaces > Leaf Interfaces > Policy Groups (access or VPC)
+  # AttEntityP - AEP
+  # PhysDomP / L3ExtDomP - Domain
+  # fvnsVlanInstP - VLAN Pool

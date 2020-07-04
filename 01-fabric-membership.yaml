@@ -5,7 +5,7 @@
 # good reference: https://github.com/datacenter/ansible-role-aci-model/blob/master/tasks/main-json.yml
 
 - name: aci2 fabric policy
-  hosts: irv-apic11
+  hosts: irvsdc2-apic1
   connection: local
   gather_facts: no
 
