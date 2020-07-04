@@ -4,6 +4,8 @@
 # modules: https://docs.ansible.com/ansible/latest/modules/list_of_network_modules.html
 # good reference: https://github.com/datacenter/ansible-role-aci-model/blob/master/tasks/main-json.yml
 
+# !!! these can be done in Terraform !!!
+
 - name: aci2 fabric access policy
   hosts: irvsdc-apic1
   connection: local
